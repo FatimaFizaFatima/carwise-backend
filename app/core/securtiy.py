@@ -19,6 +19,7 @@ def verify_password(plain_password: str, hash_password: str)->bool:
 
 def create_access_token(data : dict) -> str:
     to_encode = data.copy()
+    to_encode["type"] = "access"
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode["exp"] = expire
     to_encode["iat"] = datetime.utcnow()
@@ -31,6 +32,7 @@ def create_access_token(data : dict) -> str:
 
 def create_refresh_token(data : dict)->str:
     to_encode = data.copy()
+    to_encode["type"] = "refresh"
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode["exp"] = expire
     to_encode["iat"] = datetime.utcnow()

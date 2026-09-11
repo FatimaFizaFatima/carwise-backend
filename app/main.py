@@ -5,8 +5,11 @@ from app.core.logging import setup_logging
 import logging
 from app.middleware.logging import request_logging_middleware
 from app.api.v1.auth import router as auth_router
+from app.api.v1.users import router as users_router
+
 from app.core.exceptions import AppException
 from app.core.exception_handler import app_exception_handler, general_exception_handler, validation_exception_handler
+from fastapi.staticfiles import StaticFiles
 
 setup_logging()
 
@@ -37,5 +40,8 @@ app.middleware("http")(request_logging_middleware)
 setup_cors(app)
 
 app.include_router(auth_router)
+app.include_router(users_router)
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 logger.info("CarWise application is started")
