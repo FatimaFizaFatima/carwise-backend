@@ -6,6 +6,7 @@ from app.schema.auth import RegisterRequest, RegisterResponse, VerifyOtpRequest,
 from app.models.user_models import User
 from app.models.otp_code import OtpCode
 from app.models.social_account import SocialAccount
+from app.utils.emails import send_otp_email
 from app.utils.otp import generate_otp
 from app.models.refresh_token import RefreshToken
 from app.utils.token_hash import hash_token
@@ -36,18 +37,17 @@ async def register(data : RegisterRequest) -> RegisterResponse:
         code = generate_otp()
 
         otp = OtpCode(
-            user_id = user.id,
-            code_hash = hash_password(code),
-            purpose = "signup_verify",
-            channel = "sms",
-            expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)
-        )
+        user_id=user.id,
+        code_hash=hash_password(code),
+        purpose="signup_verify",
+        channel="email",
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES),
+)
 
         uow.otp_codes.add(otp)
-
         await uow.commit()
 
-        print(f"[DEV ONLY] OTP for {user.phone}: {code}")
+        await send_otp_email(user.email, code, "signup_verify")
 
         return RegisterResponse(
             id=user.id,
@@ -72,9 +72,9 @@ async def _issue_tokens(user: User, uow: UnitOfWork) -> TokenResponse:
 async def verify_otp(data : VerifyOtpRequest) -> TokenResponse:
     async with UnitOfWork() as uow:
 
-        user = await uow.users.get_user_by_phone(data.phone)
+        user = await uow.users.get_user_by_email(data.email)
         if user is None:
-            raise AppException("Invalid phone number", status_code=404)
+            raise AppException("Invalid email", status_code=404)
 
         otp = await uow.otp_codes.get_latest_active(user.id, "signup_verify")
         if otp is None:
@@ -92,7 +92,7 @@ async def verify_otp(data : VerifyOtpRequest) -> TokenResponse:
             raise AppException("Invalid OTP", status_code=400)
 
         await uow.otp_codes.update(otp, {"consumed_at": datetime.now(timezone.utc)})
-        await uow.users.update(user, {"phone_verified": True})
+        await uow.users.update(user, {"email_verified": True})
 
 
         tokens = await _issue_tokens(user, uow)
@@ -109,8 +109,8 @@ async def login(data : LoginRequest) -> TokenResponse:
         if user is None or user.password_hash is None or not verify_password(data.password, user.password_hash):
             raise AppException("Invalid email or password", status_code=401)
 
-        if not user.phone_verified:
-            raise AppException("Please verify your phone number before logging in.", status_code=403)
+        if not user.email_verified:
+            raise AppException("Please verify your email before logging in.", status_code=403)
 
         tokens = await _issue_tokens(user, uow)
         await uow.commit()
@@ -122,20 +122,17 @@ async def forgot_password(data: ForgotPasswordRequest) -> ForgotPasswordResponse
         user = await uow.users.get_user_by_identifier(data.identifier)
 
         if user is not None:
-            is_email = "@" in data.identifier
-            channel = "email" if is_email else "sms"
-
             code = generate_otp()
             otp = OtpCode(
                 user_id=user.id,
                 code_hash=hash_password(code),
                 purpose="reset_password",
-                channel=channel,
+                channel="email",
                 expires_at=datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES),
             )
             uow.otp_codes.add(otp)
             await uow.commit()
-            print(f"[DEV ONLY] Reset OTP ({channel}) for {data.identifier}: {code}")
+            await send_otp_email(user.email, code, "reset_password")
 
         return ForgotPasswordResponse()    
 
@@ -187,7 +184,7 @@ async def reset_password(data: ResetPasswordRequest) -> MessageResponse:
 
 async def resend_otp(data: ResendOtpRequest) -> MessageResponse:
     async with UnitOfWork() as uow:
-        user = await uow.users.get_user_by_phone(data.phone)
+        user = await uow.users.get_user_by_email(data.email)
         if user is None:
             raise AppException("Invalid phone number", status_code=404)
 
@@ -203,19 +200,21 @@ async def resend_otp(data: ResendOtpRequest) -> MessageResponse:
             user_id=user.id,
             code_hash=hash_password(code),
             purpose="signup_verify",
-            channel="sms",
+            channel="email",
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES),
         )
         uow.otp_codes.add(new_otp)
         await uow.commit()
 
-        print(f"[DEV ONLY] Resent OTP for {user.phone}: {code}")
+        await send_otp_email(user.email, code, "signup_verify")
         return MessageResponse(message="A new OTP has been sent.")
 
 
 async def refresh(data: RefreshRequest) -> RefreshResponse:
     async with UnitOfWork() as uow:
         payload = decode_token(data.refresh_token)
+        if payload.get("type") != "refresh":
+            raise AppException("Invalid token type", status_code=401)
         user_id = int(payload["sub"])
 
         token_hash = hash_token(data.refresh_token)

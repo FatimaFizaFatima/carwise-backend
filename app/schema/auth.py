@@ -18,8 +18,6 @@ def _check_otp_format(value: str) -> str:
     return value
 
 
-# ---------- Register ----------
-
 class RegisterRequest(BaseModel):
     full_name: str
     email: EmailStr
@@ -37,13 +35,12 @@ class RegisterResponse(BaseModel):
     full_name: str
     email: str
     phone: str
-    message: str = "Registration successful. Please verify the OTP sent to your phone."
+    message: str = "Registration successful. Please verify the OTP sent to your email."
 
 
-# ---------- OTP verify / resend ----------
 
 class VerifyOtpRequest(BaseModel):
-    phone: str
+    email: EmailStr
     otp: str
 
     @field_validator("otp")
@@ -53,23 +50,19 @@ class VerifyOtpRequest(BaseModel):
 
 
 class ResendOtpRequest(BaseModel):
-    phone: str
+    email: EmailStr
 
-
-# ---------- Login ----------
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
 
-# ---------- OAuth (Google only) ----------
 
 class OAuthLoginRequest(BaseModel):
     provider_token: str
 
 
-# ---------- Forgot / reset password ----------
 
 class ForgotPasswordRequest(BaseModel):
     identifier: str
@@ -103,8 +96,6 @@ class ResetPasswordRequest(BaseModel):
         return _check_password_policy(value)
 
 
-# ---------- Refresh / logout ----------
-
 class RefreshRequest(BaseModel):
     refresh_token: str
 
@@ -118,7 +109,6 @@ class LogoutRequest(BaseModel):
     refresh_token: str
 
 
-# ---------- Shared ----------
 
 class TokenResponse(BaseModel):
     access_token: str

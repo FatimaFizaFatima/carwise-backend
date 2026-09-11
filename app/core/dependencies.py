@@ -13,6 +13,8 @@ async def get_current_user(
 ) -> User:
     token = credentials.credentials
     payload = decode_token(token)
+    if payload.get("type") != "access":
+        raise AppException("Invalid token type", status_code=401)
 
     user_id = payload.get("sub")
     if not user_id:
