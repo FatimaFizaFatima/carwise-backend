@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str
     SMTP_PASSWORD: str
     SMTP_FROM: str
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
+
+
 
     model_config = SettingsConfigDict(
         env_file=".env",

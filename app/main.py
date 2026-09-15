@@ -6,10 +6,11 @@ import logging
 from app.middleware.logging import request_logging_middleware
 from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
-
+from app.api.v1.cars import router as cars_router
 from app.core.exceptions import AppException
 from app.core.exception_handler import app_exception_handler, general_exception_handler, validation_exception_handler
 from fastapi.staticfiles import StaticFiles
+from app.api.v1.admin import router as admin_router
 
 setup_logging()
 
@@ -41,6 +42,8 @@ setup_cors(app)
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(cars_router)
+app.include_router(admin_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

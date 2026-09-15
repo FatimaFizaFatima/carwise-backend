@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from app.unit_of_work import UnitOfWork
+from app.unit_of_work.unit_of_work import UnitOfWork
 from app.core.securtiy import hash_password, verify_password
 from app.core.exceptions import AppException
 from app.schema.user import ChangePasswordRequest, UpdateProfileRequest, UserProfileResponse

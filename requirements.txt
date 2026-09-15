@@ -18,3 +18,4 @@ google-auth
 requests
 aiosmtplib
 python-multipart
+pytest-asyncio
