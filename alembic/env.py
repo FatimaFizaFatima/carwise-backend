@@ -10,6 +10,8 @@ from app.models.user_models import User
 from app.models.otp_code import OtpCode 
 from app.models.refresh_token import RefreshToken 
 from app.models.social_account import SocialAccount  
+from app.models.cars import Car
+from app.models.workshop import Workshop
 
 config = context.config
 if config.config_file_name is not None:

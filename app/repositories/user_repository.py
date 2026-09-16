@@ -22,6 +22,6 @@ class UserRepository(BaseRepository[User]):
         result = await self.session.execute(select(User).where(or_(User.email == identifier, User.phone == identifier)))
         return result.scalar_one_or_none()        
 
-    async def exist_by_user_email_or_phone(self, email : str, phone : str)->bool:
+    async def exists_by_email_or_phone(self, email : str, phone : str)->bool:
         result = await self.session.execute(select(User).where(or_(User.email == email, User.phone == phone)))
         return result.scalar_one_or_none() is not None

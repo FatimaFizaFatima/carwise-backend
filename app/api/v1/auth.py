@@ -11,6 +11,8 @@ from app.schema.auth import (
     TokenResponse, MessageResponse,
 )
 from app.service import auth_service
+from app.service import workshop_service
+from app.schema.workshop import WorkshopStaffRegisterRequest, WorkshopStaffRegisterResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -63,3 +65,8 @@ async def refresh(data: RefreshRequest):
 @router.post("/logout", response_model=MessageResponse)
 async def logout(data: LogoutRequest):
     return await auth_service.logout(data)
+
+
+@router.post("/register-workshop", response_model=WorkshopStaffRegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register_workshop_staff(data: WorkshopStaffRegisterRequest):
+    return await workshop_service.register_workshop_staff(data)

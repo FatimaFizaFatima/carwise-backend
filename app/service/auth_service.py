@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime, timezone
-from app.unit_of_work import UnitOfWork
+from app.unit_of_work.unit_of_work import UnitOfWork
 from app.core.securtiy import hash_password, verify_password, create_access_token, create_refresh_token, create_reset_token, decode_reset_token, decode_token
 from app.core.exceptions import AppException
 from app.schema.auth import RegisterRequest, RegisterResponse, VerifyOtpRequest, TokenResponse, LoginRequest, ForgotPasswordRequest, ForgotPasswordResponse, VerifyResetCodeRequest, VerifyResetCodeResponse, MessageResponse, ResetPasswordRequest, ResendOtpRequest, LogoutRequest, RefreshRequest, RefreshResponse, OAuthLoginRequest
@@ -13,6 +13,7 @@ from app.utils.token_hash import hash_token
 from app.core.config import settings
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
+from app.core.roles import AccountStatus
 
 OTP_EXPIRY_MINUTES = 10
 MAX_OTP_ATTEMPTS = 5
@@ -20,7 +21,7 @@ OTP_RESEND_COOLDOWN_SECONDS = 60
 
 async def register(data : RegisterRequest) -> RegisterResponse:
     async with UnitOfWork() as uow:
-        if await uow.users.exist_by_user_email_or_phone(data.email, data.phone):
+        if await uow.users.exists_by_email_or_phone(data.email, data.phone):
             raise AppException("Email or phone already exist", status_code=409)
 
         user = User(
@@ -28,6 +29,7 @@ async def register(data : RegisterRequest) -> RegisterResponse:
             email=data.email,
             phone=data.phone,
             password_hash=hash_password(data.password)
+            
         )
 
         uow.users.add(user)
@@ -101,16 +103,23 @@ async def verify_otp(data : VerifyOtpRequest) -> TokenResponse:
         return tokens
 
 
-async def login(data : LoginRequest) -> TokenResponse:
+async def login(data: LoginRequest) -> TokenResponse:
     async with UnitOfWork() as uow:
-
         user = await uow.users.get_user_by_email(data.email)
 
-        if user is None or user.password_hash is None or not verify_password(data.password, user.password_hash):
+        if (user is None or user.password_hash is None
+                or not verify_password(data.password, user.password_hash)):
             raise AppException("Invalid email or password", status_code=401)
 
         if not user.email_verified:
             raise AppException("Please verify your email before logging in.", status_code=403)
+
+        if user.status == AccountStatus.PENDING_APPROVAL:
+            raise AppException("Your account is pending admin approval.", status_code=403)
+        if user.status == AccountStatus.SUSPENDED:
+            raise AppException("Your account has been suspended. Contact support.", status_code=403)
+        if user.status == AccountStatus.REJECTED:
+            raise AppException("Your account application was not approved.", status_code=403)
 
         tokens = await _issue_tokens(user, uow)
         await uow.commit()
