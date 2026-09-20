@@ -6,6 +6,11 @@ from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.social_account_repository import SocialAccountRepository
 from app.repositories.car_repository import CarRepository
 from app.repositories.workshop_repository import WorkshopRepository
+from app.repositories.service_category_repository import ServiceCategoryRepository
+from app.repositories.workshop_service_repository import WorkshopServiceRepository
+from app.repositories.booking_repository import BookingRepository
+from app.repositories.booking_item_repository import BookingItemRepository
+from app.repositories.workshop_review_repository import WorkshopReviewRepository
 
 class UnitOfWork():
     def __init__(self):
@@ -16,6 +21,11 @@ class UnitOfWork():
         self.social_accounts = SocialAccountRepository(self.session)
         self.cars = CarRepository(self.session)
         self.workshops = WorkshopRepository(self.session)
+        self.service_categories = ServiceCategoryRepository(self.session)
+        self.workshop_services = WorkshopServiceRepository(self.session)
+        self.bookings = BookingRepository(self.session)
+        self.booking_items = BookingItemRepository(self.session)
+        self.workshop_reviews = WorkshopReviewRepository(self.session)
 
 
     async def __aenter__(self):

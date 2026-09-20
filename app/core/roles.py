@@ -25,3 +25,13 @@ class WorkshopStatus:
     APPROVED = "approved"
     REJECTED = "rejected"
     SUSPENDED = "suspended"
+
+
+class BookingStatus:
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+    ACTIVE = (PENDING, CONFIRMED, IN_PROGRESS)

@@ -72,6 +72,21 @@ Account creation differs per role:
 - Approve a pending Workshop Staff registration (`POST /admin/workshop-staff/{id}/approve`)
 - Reject a pending Workshop Staff registration (`POST /admin/workshop-staff/{id}/reject`)
 
+### Workshop/Service Management
+- Service Categories (Admin-managed, shared across all workshops)
+- Workshop self-management (details, hours, image) for staff
+- Workshop Services (a workshop's priced offering of a category)
+- Search with filters/sorting/pagination
+- Nearby search with real distance (Haversine formula)
+### Booking Management
+- Create booking (car, workshop, one or more services, date/time), price computed server-side
+- Full status lifecycle with valid-transition rules: Pending → Confirmed → In Progress → - - Completed, or Cancelled
+- Cancel and Reschedule, both respecting business rules and working hours
+- No time-slot restriction — a workshop can take multiple simultaneous bookings; capacity is managed manually via the Workshop Panel
+### Reviews & Ratings
+- One review per completed booking (not per workshop) — enforced via a unique constraint on booking_id
+- A workshop's average rating recalculates automatically on each new review
+
 ## Project Structure
 
 ```
@@ -182,6 +197,15 @@ API docs available at `http://127.0.0.1:8000/docs`.
 | PUT | `/{car_id}` | Update a car |
 | DELETE | `/{car_id}` | Soft-delete a car |
 | POST | `/{car_id}/associate` | Link a car to a different user account |
+
+### Service Categories (`/api/v1/service-categories`)
+`GET /`, `POST /`, `DELETE /{id}`
+ 
+### Workshops (`/api/v1/workshops`)
+`GET/PUT /me`, `POST /me/image`, `GET /search`, `GET /nearby`, `GET /{id}`, `GET/POST /{id}/services`, `DELETE /me/services/{id}`, `GET/POST /{id}/reviews`
+ 
+### Bookings (`/api/v1/bookings`)
+`POST /`, `GET /`, `GET /{id}`, `POST /{id}/cancel`, `POST /{id}/reschedule`, `PATCH /{id}/status`
 
 ### Admin (`/api/v1/admin`)
 | Method | Path | Description |
