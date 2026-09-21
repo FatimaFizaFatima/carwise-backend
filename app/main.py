@@ -11,6 +11,9 @@ from app.core.exceptions import AppException
 from app.core.exception_handler import app_exception_handler, general_exception_handler, validation_exception_handler
 from fastapi.staticfiles import StaticFiles
 from app.api.v1.admin import router as admin_router
+from app.api.v1.service_categories import router as service_category_router
+from app.api.v1.workshops import router as workshop_router
+from app.api.v1.bookings import router as booking_router
 
 setup_logging()
 
@@ -44,6 +47,9 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(cars_router)
 app.include_router(admin_router)
+app.include_router(service_category_router)
+app.include_router(workshop_router)
+app.include_router(booking_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

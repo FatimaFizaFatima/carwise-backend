@@ -17,6 +17,7 @@ class BaseRepository(Generic[ModelType]):
         )
         return result.scalar_one_or_none()
 
+
     def add(self, obj: ModelType) -> None:
         self.session.add(obj)
 
