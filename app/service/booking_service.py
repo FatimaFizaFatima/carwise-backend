@@ -6,6 +6,7 @@ from app.models.user_models import User
 from app.models.booking import Booking, BookingItem
 from app.schema.booking import BookingCreateRequest, BookingResponse, BookingItemResponse, RescheduleRequest
 from app.utils.booking_reference import generate_booking_reference
+from app.models.service_history import ServiceHistory
 
 
 def _to_response(booking: Booking, items: list[BookingItem]) -> BookingResponse:
@@ -169,7 +170,19 @@ async def update_booking_status(current_user: User, booking_id: int, new_status:
         await uow.bookings.update(booking, {"status": new_status})
         await uow.commit()
         items = await uow.booking_items.get_by_booking(booking_id)
-        return _to_response(booking, items)
+
+    if new_status == BookingStatus.COMPLETED:
+        async with UnitOfWork() as uow2:
+            workshop = await uow2.workshops.get_by_id(booking.workshop_id)
+            history = ServiceHistory(
+                car_id=booking.car_id, booking_id=booking.id,
+                title=f"Service at {workshop.workshop_name}", cost=booking.total_price,
+                workshop_name=workshop.workshop_name, service_date=booking.scheduled_date,
+            )
+            uow2.service_history.add(history)
+            await uow2.commit()
+
+    return _to_response(booking, items)
 
 
 

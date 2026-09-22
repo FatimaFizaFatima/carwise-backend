@@ -11,6 +11,7 @@ from app.repositories.workshop_service_repository import WorkshopServiceReposito
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.booking_item_repository import BookingItemRepository
 from app.repositories.workshop_review_repository import WorkshopReviewRepository
+from app.repositories.service_history_repository import ServiceHistoryRepository
 
 class UnitOfWork():
     def __init__(self):
@@ -26,6 +27,7 @@ class UnitOfWork():
         self.bookings = BookingRepository(self.session)
         self.booking_items = BookingItemRepository(self.session)
         self.workshop_reviews = WorkshopReviewRepository(self.session)
+        self.service_history = ServiceHistoryRepository(self.session)
 
 
     async def __aenter__(self):

@@ -16,6 +16,7 @@ from app.models.workshop_service import WorkshopService
 from app.models.service_category import ServiceCategoryModel
 from app.models.booking import Booking, BookingItem
 from app.models.workshop_review import WorkshopReview
+from app.models.service_history import ServiceHistory
 
 config = context.config
 if config.config_file_name is not None:
