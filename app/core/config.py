@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     SMTP_FROM: str
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
-
+    ONESIGNAL_APP_ID: str
+    ONESIGNAL_REST_API_KEY: str
 
 
     model_config = SettingsConfigDict(

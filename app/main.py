@@ -15,6 +15,7 @@ from app.api.v1.service_categories import router as service_category_router
 from app.api.v1.workshops import router as workshop_router
 from app.api.v1.bookings import router as booking_router
 from app.api.v1.service_history import router as service_history_router
+from app.api.v1.notification import router as notification_router
 
 setup_logging()
 
@@ -52,6 +53,7 @@ app.include_router(service_category_router)
 app.include_router(workshop_router)
 app.include_router(booking_router)
 app.include_router(service_history_router)
+app.include_router(notification_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
