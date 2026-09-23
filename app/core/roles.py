@@ -35,3 +35,19 @@ class BookingStatus:
     CANCELLED = "cancelled"
 
     ACTIVE = (PENDING, CONFIRMED, IN_PROGRESS)
+
+
+class NotificationType:
+    """Notification event types sent via OneSignal. Used in the push payload's
+    data.type field so the mobile app knows how to deep-link on tap."""
+
+    BOOKING_CREATED = "booking_created"
+    BOOKING_CONFIRMED = "booking_confirmed"
+    BOOKING_STATUS_UPDATED = "booking_status_updated"
+    BOOKING_CANCELLED = "booking_cancelled"
+    BOOKING_RESCHEDULED = "booking_rescheduled"
+    SERVICE_REMINDER = "service_reminder"
+    NEW_CHAT_MESSAGE = "new_chat_message"
+    PROMOTIONAL_OFFER = "promotional_offer"
+    SYSTEM_MAINTENANCE = "system_maintenance"
+    GENERAL = "general"

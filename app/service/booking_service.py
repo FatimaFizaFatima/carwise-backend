@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from fastapi import BackgroundTasks
 from app.unit_of_work.unit_of_work import UnitOfWork
 from app.core.exceptions import AppException
 from app.core.roles import Role, BookingStatus, WorkshopStatus
@@ -7,6 +8,7 @@ from app.models.booking import Booking, BookingItem
 from app.schema.booking import BookingCreateRequest, BookingResponse, BookingItemResponse, RescheduleRequest
 from app.utils.booking_reference import generate_booking_reference
 from app.models.service_history import ServiceHistory
+from app.service import notification_service
 
 
 def _to_response(booking: Booking, items: list[BookingItem]) -> BookingResponse:
@@ -21,7 +23,7 @@ def _to_response(booking: Booking, items: list[BookingItem]) -> BookingResponse:
     )
 
 
-async def create_booking(current_user: User, data: BookingCreateRequest) -> BookingResponse:
+async def create_booking(current_user: User, data: BookingCreateRequest, background_tasks: BackgroundTasks) -> BookingResponse:
     async with UnitOfWork() as uow:
         car = await uow.cars.get_active_by_id(data.car_id)
         if car is None or car.user_id != current_user.id:
@@ -61,8 +63,7 @@ async def create_booking(current_user: User, data: BookingCreateRequest) -> Book
             items.append(item)
 
         await uow.commit()
-        # TODO: trigger a real notification once the Notifications module exists
-        print(f"[DEV ONLY] Booking {booking.booking_reference} confirmed for user {current_user.id}")
+        background_tasks.add_task(notification_service.notify_booking_created, booking)
         return _to_response(booking, items)
     
 
@@ -100,7 +101,7 @@ async def list_my_bookings(current_user: User) -> list[BookingResponse]:
         return result
 
 
-async def cancel_booking(current_user: User, booking_id: int) -> BookingResponse:
+async def cancel_booking(current_user: User, booking_id: int, background_tasks: BackgroundTasks) -> BookingResponse:
     async with UnitOfWork() as uow:
         booking = await uow.bookings.get_by_id(booking_id)
         if booking is None:
@@ -115,11 +116,12 @@ async def cancel_booking(current_user: User, booking_id: int) -> BookingResponse
 
         await uow.bookings.update(booking, {"status": BookingStatus.CANCELLED})
         await uow.commit()
+        background_tasks.add_task(notification_service.notify_booking_cancelled, booking)
         items = await uow.booking_items.get_by_booking(booking_id)
         return _to_response(booking, items)
 
 
-async def reschedule_booking(current_user: User, booking_id: int, data: RescheduleRequest) -> BookingResponse:
+async def reschedule_booking(current_user: User, booking_id: int, data: RescheduleRequest, background_tasks: BackgroundTasks) -> BookingResponse:
     async with UnitOfWork() as uow:
         booking = await uow.bookings.get_by_id(booking_id)
         if booking is None:
@@ -137,10 +139,12 @@ async def reschedule_booking(current_user: User, booking_id: int, data: Reschedu
             if not (workshop.opens_at <= data.scheduled_time <= workshop.closes_at):
                 raise AppException("Selected time is outside workshop working hours", status_code=400)
 
+        old_date, old_time = booking.scheduled_date, booking.scheduled_time
         await uow.bookings.update(booking, {
             "scheduled_date": data.scheduled_date, "scheduled_time": data.scheduled_time,
         })
         await uow.commit()
+        background_tasks.add_task(notification_service.notify_booking_rescheduled, booking, old_date, old_time)
         items = await uow.booking_items.get_by_booking(booking_id)
         return _to_response(booking, items)
 
@@ -152,7 +156,7 @@ VALID_TRANSITIONS = {
 }
 
 
-async def update_booking_status(current_user: User, booking_id: int, new_status: str) -> BookingResponse:
+async def update_booking_status(current_user: User, booking_id: int, new_status: str, background_tasks: BackgroundTasks) -> BookingResponse:
     if current_user.role == Role.CUSTOMER:
         raise AppException("Not authorized to update booking status", status_code=403)
 
@@ -171,6 +175,13 @@ async def update_booking_status(current_user: User, booking_id: int, new_status:
         await uow.commit()
         items = await uow.booking_items.get_by_booking(booking_id)
 
+    if new_status == BookingStatus.CONFIRMED:
+        background_tasks.add_task(notification_service.notify_booking_confirmed, booking)
+    elif new_status == BookingStatus.CANCELLED:
+        background_tasks.add_task(notification_service.notify_booking_cancelled, booking)
+    else:
+        background_tasks.add_task(notification_service.notify_booking_status_updated, booking, new_status)
+
     if new_status == BookingStatus.COMPLETED:
         async with UnitOfWork() as uow2:
             workshop = await uow2.workshops.get_by_id(booking.workshop_id)
@@ -183,7 +194,3 @@ async def update_booking_status(current_user: User, booking_id: int, new_status:
             await uow2.commit()
 
     return _to_response(booking, items)
-
-
-
-        

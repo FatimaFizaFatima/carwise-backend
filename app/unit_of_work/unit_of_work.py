@@ -12,6 +12,7 @@ from app.repositories.booking_repository import BookingRepository
 from app.repositories.booking_item_repository import BookingItemRepository
 from app.repositories.workshop_review_repository import WorkshopReviewRepository
 from app.repositories.service_history_repository import ServiceHistoryRepository
+from app.repositories.device_token_repository import DeviceTokenRepository
 
 class UnitOfWork():
     def __init__(self):
@@ -28,6 +29,7 @@ class UnitOfWork():
         self.booking_items = BookingItemRepository(self.session)
         self.workshop_reviews = WorkshopReviewRepository(self.session)
         self.service_history = ServiceHistoryRepository(self.session)
+        self.device_tokens = DeviceTokenRepository(self.session)
 
 
     async def __aenter__(self):
