@@ -10,12 +10,12 @@ class ServiceHistoryRepository(BaseRepository[ServiceHistory]):
         super().__init__(session, ServiceHistory)
 
 
-    async def get_service_history_by_user_cars(self, car_ids : list[int], limit : list[int], offset : int):
+    async def get_service_history_by_user_cars(self, car_ids : list[int], limit : int, offset : int):
         result = await self.session.execute(select(ServiceHistory).where(ServiceHistory.car_id.in_(car_ids), ServiceHistory.booking_id.is_not(None)).order_by(ServiceHistory.service_date.desc()).limit(limit).offset(offset))
         return list(result.scalars().all())
 
-    async def get_expense_history_by_user_cars(self, car_ids : list[int], limit : list[int], offset : int):
-        result = await self.session.execute(select(ServiceHistory).where(ServiceHistory.car_id.in_(car_ids), ServiceHistory.booking_id.is_not(None)).order_by(ServiceHistory.service_date.desc()).limit(limit).offset(offset))
+    async def get_expense_history_by_user_cars(self, car_ids : list[int], limit : int, offset : int):
+        result = await self.session.execute(select(ServiceHistory).where(ServiceHistory.car_id.in_(car_ids), ServiceHistory.booking_id.is_(None)).order_by(ServiceHistory.service_date.desc()).limit(limit).offset(offset))
         return list(result.scalars().all())
 
     async def get_by_car(self, car_id : int, limit : int, offset : int):
