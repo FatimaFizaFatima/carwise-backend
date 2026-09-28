@@ -1,0 +1,78 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+
+    steps:
+      - name: Set up SSH access
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy on the server
+        run: |
+          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" 'bash -s' << 'EOF'
+          set -euo pipefail
+          export TMPDIR=/home/ubuntu/tmp
+          mkdir -p "$TMPDIR"
+          cd ~/carwise-backend
+
+          echo "==> Current version: $(git rev-parse --short HEAD)"
+
+          echo "==> Pulling latest code from main"
+          git fetch origin main
+          git reset --hard origin/main
+          echo "==> Deploying version: $(git rev-parse --short HEAD)"
+
+          echo "==> Installing dependencies"
+          venv/bin/pip install -r requirements.txt --quiet
+
+          echo "==> Running database migrations"
+          venv/bin/alembic upgrade head
+
+          echo "==> Restarting the service"
+          sudo systemctl restart carwise
+          sleep 3
+          sudo systemctl is-active --quiet carwise
+          echo "==> Service is active"
+          EOF
+
+      - name: Verify the API is responding
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://$EC2_HOST/openapi.json" || true)
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "API is up and responding."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "API did not return HTTP 200 after deployment."
+          exit 1
+
+      - name: Show server logs on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" 'sudo journalctl -u carwise -n 40 --no-pager' || true
