@@ -19,3 +19,4 @@ requests
 aiosmtplib
 python-multipart
 pytest-asyncio
+gunicorn 
