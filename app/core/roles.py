@@ -37,6 +37,12 @@ class BookingStatus:
     ACTIVE = (PENDING, CONFIRMED, IN_PROGRESS)
 
 
+class MessageStatus:
+    SENT = "sent"
+    DELIVERED = "delivered"
+    READ = "read"
+
+
 class NotificationType:
     """Notification event types sent via OneSignal. Used in the push payload's
     data.type field so the mobile app knows how to deep-link on tap."""
