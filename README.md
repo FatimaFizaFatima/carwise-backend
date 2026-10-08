@@ -118,6 +118,47 @@ Rules and access:
 
 Notification types: `booking_created`, `booking_confirmed`, `booking_status_updated`, `booking_cancelled`, `booking_rescheduled`, `promotional_offer`, `system_maintenance`. The types `service_reminder` and `new_chat_message` are defined but not used yet (see Next Steps).
 
+## Real-time chat
+
+Chat has two parts: REST endpoints under `/chat` and a Socket.IO server at `/socket.io`.
+Every message is saved first, then delivered live. The database is the record.
+
+### Connecting
+Connect with the access token in the `auth` field: `{"token": "<access token>"}`.
+Refresh tokens and invalid tokens are refused.
+
+### Socket events (client to server)
+Every event replies with `{"ok": true, ...}` or `{"ok": false, "error": "..."}`.
+
+| Event | Payload | Reply |
+|---|---|---|
+| `join_conversation` | `conversation_id` | `room`, `online` (users already in the chat) |
+| `send_message` | `conversation_id`, `text` | `message` |
+| `message_delivered` | `conversation_id`, `up_to_message_id` | `delivered_message_ids` |
+| `messages_read` | `conversation_id`, `up_to_message_id` | `read_message_ids` |
+
+### Socket events (server to client)
+| Event | Meaning |
+|---|---|
+| `new_message` | A new message in a conversation the user joined |
+| `message_status` | Messages changed to `delivered` or `read` |
+| `presence_update` | The other side came online or went offline in a conversation |
+
+### Reconnect
+After a reconnect the connection has no rooms. In the connect handler the app should:
+1. Emit `join_conversation` again.
+2. Call `GET /chat/conversations/{id}/messages?after_id=<last message id>` to fetch missed messages.
+
+### Push notifications
+When a message is saved, users on the other side who are not in the conversation
+get a `new_chat_message` push. The data has `conversation_id`, `booking_id` and `booking_reference`.
+
+### Test clients
+    python scripts/socket_client.py <access_token> <conversation_id> ["text"] [stay_seconds]
+    python scripts/socket_reconnect_client.py <access_token> <conversation_id> [stay_seconds] [last_message_id]
+
+Dependencies: `python-socketio`, `websockets`, `aiohttp`.
+
 ## Project Structure
 
 ```
