@@ -8,7 +8,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.schema.chat import (
     ConversationCreateRequest, ConversationResponse,
-    MessageSendRequest, MessageResponse, MarkReadRequest,
+    MessageSendRequest, MessageResponse, MarkReadRequest, MarkDeliveredRequest
 )
 
 
@@ -162,3 +162,19 @@ async def mark_read(
         )
         await uow.commit()
         return {"read_message_ids": read_ids}
+
+
+async def check_conversation_access(current_user: User, conversation_id: int) -> None:
+    async with UnitOfWork() as uow:
+        await _get_conversation_for_user(uow, conversation_id, current_user)
+
+async def mark_delivered(current_user: User, conversation_id: int, data: MarkDeliveredRequest) -> dict:
+    async with UnitOfWork() as uow:
+        conversation, for_customer = await _get_conversation_for_user(
+            uow, conversation_id, current_user
+        )
+        delivered_ids = await uow.messages.mark_delivered(
+            conversation.id, conversation.customer_id, for_customer, data.up_to_message_id
+        )
+        await uow.commit()
+        return {"delivered_message_ids": delivered_ids}

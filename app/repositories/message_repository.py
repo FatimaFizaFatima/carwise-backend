@@ -78,3 +78,18 @@ class MessageRepository(BaseRepository[Message]):
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def mark_delivered(self, conversation_id: int, customer_id: int, for_customer: bool, up_to_id: int) -> list[int]:
+        stmt = update(Message).where(Message.conversation_id == conversation_id, Message.id <= up_to_id, Message.status == MessageStatus.SENT)
+        if for_customer:
+            stmt = stmt.where(Message.sender_id != customer_id)
+        else:
+            stmt = stmt.where(Message.sender_id == customer_id)
+
+        stmt = (
+            stmt.values(status=MessageStatus.DELIVERED, delivered_at=func.now())
+            .returning(Message.id)
+            .execution_options(synchronize_session=False)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

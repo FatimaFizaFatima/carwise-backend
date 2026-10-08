@@ -43,3 +43,7 @@ class ConversationResponse(BaseModel):
     last_message: str | None = None
     last_message_at: datetime | None = None
     unread_count: int = 0
+
+class MarkDeliveredRequest(BaseModel):
+    up_to_message_id: int
+
