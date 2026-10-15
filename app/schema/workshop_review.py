@@ -1,11 +1,13 @@
 from datetime import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ReviewCreateRequest(BaseModel):
-    booking_id: int
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    booking_id: int = Field(gt=0)
     rating: int
-    comment: str | None = None
+    comment: str | None = Field(default=None, max_length=1000)
 
     @field_validator("rating")
     @classmethod

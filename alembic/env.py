@@ -18,6 +18,8 @@ from app.models.booking import Booking, BookingItem
 from app.models.workshop_review import WorkshopReview
 from app.models.service_history import ServiceHistory
 from app.models.device_token import DeviceToken
+from app.models.conversation import Conversation
+from app.models.message import Message
 
 
 config = context.config

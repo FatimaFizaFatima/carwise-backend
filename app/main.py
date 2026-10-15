@@ -16,6 +16,10 @@ from app.api.v1.workshops import router as workshop_router
 from app.api.v1.bookings import router as booking_router
 from app.api.v1.service_history import router as service_history_router
 from app.api.v1.notification import router as notification_router
+from app.api.v1.chat import router as chat_router
+import socketio
+from app.realtime.socket_server import sio
+
 
 setup_logging()
 
@@ -54,7 +58,11 @@ app.include_router(workshop_router)
 app.include_router(booking_router)
 app.include_router(service_history_router)
 app.include_router(notification_router)
+app.include_router(chat_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+fastapi_app = app
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
 
 logger.info("CarWise application is started")
