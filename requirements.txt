@@ -20,6 +20,6 @@ aiosmtplib
 python-multipart
 pytest-asyncio
 gunicorn 
-python-socketio
-websockets
-aiohttp
+python-socketio==5.17.0
+websockets==17.2
+aiohttp==3.14.5

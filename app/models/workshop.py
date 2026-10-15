@@ -1,6 +1,5 @@
-# app/models/workshop.py
 from datetime import datetime, time
-from sqlalchemy import String, DateTime, Float, Time, func
+from sqlalchemy import String, DateTime, Float, Time, Index, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.core.roles import WorkshopStatus
@@ -8,6 +7,10 @@ from app.core.roles import WorkshopStatus
 
 class Workshop(Base):
     __tablename__ = "workshops"
+    __table_args__ = (
+        Index("ix_workshops_status", "status"),
+        Index("ix_workshops_lat_lng", "latitude", "longitude"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     workshop_name: Mapped[str] = mapped_column(String(150), nullable=False)

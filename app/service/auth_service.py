@@ -131,6 +131,7 @@ async def forgot_password(data: ForgotPasswordRequest) -> ForgotPasswordResponse
         user = await uow.users.get_user_by_identifier(data.identifier)
 
         if user is not None:
+            await uow.otp_codes.invalidate_active(user.id, "reset_password")   
             code = generate_otp()
             otp = OtpCode(
                 user_id=user.id,
@@ -204,6 +205,7 @@ async def resend_otp(data: ResendOtpRequest) -> MessageResponse:
                 wait = int(OTP_RESEND_COOLDOWN_SECONDS - seconds_since)
                 raise AppException(f"Please wait {wait} seconds before requesting a new code.", status_code=429)
 
+        await uow.otp_codes.invalidate_active(user.id, "signup_verify")   
         code = generate_otp()
         new_otp = OtpCode(
             user_id=user.id,

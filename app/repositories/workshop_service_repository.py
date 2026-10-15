@@ -10,15 +10,25 @@ class WorkshopServiceRepository(BaseRepository[WorkshopService]):
 
     async def get_by_workshop(self, workshop_id: int) -> list[WorkshopService]:
         result = await self.session.execute(
-            select(WorkshopService).where(WorkshopService.workshop_id == workshop_id)
+            select(WorkshopService)
+            .where(WorkshopService.workshop_id == workshop_id)
+            .order_by(WorkshopService.id.asc())
         )
         return list(result.scalars().all())
 
     async def exists_for_workshop(self, workshop_id: int, category_id: int) -> bool:
         result = await self.session.execute(
-            select(WorkshopService.id).where(
+            select(WorkshopService.id)
+            .where(
                 WorkshopService.workshop_id == workshop_id,
                 WorkshopService.category_id == category_id,
             )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def exists_for_category(self, category_id: int) -> bool:
+        result = await self.session.execute(
+            select(WorkshopService.id).where(WorkshopService.category_id == category_id).limit(1)
         )
         return result.scalar_one_or_none() is not None
