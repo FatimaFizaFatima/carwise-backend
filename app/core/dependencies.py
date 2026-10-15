@@ -6,10 +6,13 @@ from app.core.exceptions import AppException
 from app.models.user_models import User
 from app.core.roles import AccountStatus
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+async def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> User:
+    if credentials is None:
+        raise AppException("Not authenticated", status_code=401)
+
     token = credentials.credentials
     payload = decode_token(token)
     if payload.get("type") != "access":
