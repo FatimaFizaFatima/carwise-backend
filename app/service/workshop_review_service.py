@@ -9,10 +9,19 @@ from app.schema.workshop_review import ReviewCreateRequest, ReviewResponse
 from app.service.workshop_service import get_approved_workshop
 
 
-def _to_response(r: WorkshopReview) -> ReviewResponse:
+def _display_name(full_name: str) -> str:
+    parts = full_name.strip().split()
+    if len(parts) <= 1:
+        return full_name.strip()
+    return f"{parts[0]} {parts[-1][0]}."
+
+
+def _to_response(r: WorkshopReview, reviewer: User) -> ReviewResponse:
     return ReviewResponse(
         id=r.id, workshop_id=r.workshop_id, user_id=r.user_id, booking_id=r.booking_id,
         rating=r.rating, comment=r.comment, created_at=r.created_at,
+        reviewer_name=_display_name(reviewer.full_name),
+        reviewer_avatar_url=reviewer.avatar_url,
     )
 
 
@@ -49,13 +58,13 @@ async def create_review(current_user: User, workshop_id: int, data: ReviewCreate
             
             await uow.rollback()
             raise AppException("You've already reviewed this booking", status_code=409)
-        return _to_response(review)
+        return _to_response(review, current_user)
 
 
 async def list_reviews(workshop_id: int, page: int, page_size: int) -> list[ReviewResponse]:
     async with UnitOfWork() as uow:
         await get_approved_workshop(uow, workshop_id)
-        reviews = await uow.workshop_reviews.get_by_workshop(
+        rows = await uow.workshop_reviews.get_by_workshop_with_reviewers(
             workshop_id, limit=page_size, offset=(page - 1) * page_size
         )
-        return [_to_response(r) for r in reviews]
+        return [_to_response(review, reviewer) for review, reviewer in rows]
