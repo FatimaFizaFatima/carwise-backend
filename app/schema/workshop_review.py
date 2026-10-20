@@ -25,3 +25,5 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: str | None
     created_at: datetime
+    reviewer_name: str
+    reviewer_avatar_url: str | None = None

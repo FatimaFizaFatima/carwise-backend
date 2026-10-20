@@ -2,6 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.workshop_review import WorkshopReview
 from app.repositories.base_repo import BaseRepository
+from app.models.user_models import User
 
 
 class WorkshopReviewRepository(BaseRepository[WorkshopReview]):
@@ -36,3 +37,16 @@ class WorkshopReviewRepository(BaseRepository[WorkshopReview]):
         )
         avg = result.scalar_one_or_none()
         return round(float(avg), 2) if avg is not None else 0.0
+
+    async def get_by_workshop_with_reviewers(
+        self, workshop_id: int, limit: int, offset: int
+    ) -> list[tuple[WorkshopReview, User]]:
+        result = await self.session.execute(
+            select(WorkshopReview, User)
+            .join(User, User.id == WorkshopReview.user_id)
+            .where(WorkshopReview.workshop_id == workshop_id)
+            .order_by(WorkshopReview.created_at.desc(), WorkshopReview.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.all())
