@@ -20,6 +20,7 @@ from app.models.service_history import ServiceHistory
 from app.models.device_token import DeviceToken
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.models.notification import Notification
 
 
 config = context.config

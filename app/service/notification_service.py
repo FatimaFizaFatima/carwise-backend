@@ -7,11 +7,22 @@ from app.core.roles import NotificationType, Role
 from app.models.device_token import DeviceToken
 from app.models.booking import Booking
 from app.models.user_models import User
-from app.schema.notification import DeviceTokenRegisterRequest, DeviceTokenResponse, BroadcastNotificationRequest
+from app.schema.notification import DeviceTokenRegisterRequest, DeviceTokenResponse, BroadcastNotificationRequest, MarkAllReadResponse, NotificationResponse, NotificationType, UnreadCountResponse
+from datetime import datetime, timezone
+from app.models.notification import Notification
+
 
 logger = logging.getLogger(__name__)
 
 ONESIGNAL_API_URL = "https://api.onesignal.com/notifications"
+NOT_SAVED_TYPES = {NotificationType.NEW_CHAT_MESSAGE}
+
+def _notification_to_response(n: Notification) -> NotificationResponse:
+    return NotificationResponse(
+        id=n.id, title=n.title, message=n.message,
+        notification_type=n.notification_type, reference_id=n.reference_id,
+        data=n.data, is_read=n.is_read, read_at=n.read_at, created_at=n.created_at,
+    )
 
 
 def _to_response(device_token: DeviceToken) -> DeviceTokenResponse:
@@ -62,7 +73,21 @@ async def send_notification(
     Deliberately never raises -- a failed or skipped notification should never
     break the business action that triggered it."""
     async with UnitOfWork() as uow:
+        if notification_type not in NOT_SAVED_TYPES:
+            try:
+                uow.notifications.add(Notification(
+                    user_id=user_id, title=title, message=message,
+                    notification_type=notification_type,
+                    reference_id=reference_id if isinstance(reference_id, int) else None,
+                    data=data or None,
+                ))
+                await uow.commit()
+            except Exception:
+                logger.exception("Failed to save notification history for user_id=%s", user_id)
+                await uow.rollback()
         tokens = await uow.device_tokens.get_active_by_user(user_id)
+    if not tokens:
+        return
     if not tokens:
         return
 
@@ -152,6 +177,19 @@ async def notify_booking_rescheduled(booking: Booking, old_date, old_time) -> No
         },
     )
 
+async def _save_broadcast_history(
+    user_ids: list[int], title: str, message: str, notification_type: str
+) -> None:
+    try:
+        async with UnitOfWork() as uow:
+            uow.notifications.add_many([
+                Notification(user_id=uid, title=title, message=message,
+                             notification_type=notification_type)
+                for uid in user_ids
+            ])
+            await uow.commit()
+    except Exception:
+        logger.exception("Failed to save broadcast history")
 
 async def send_broadcast_notification(title: str, message: str, notification_type: str) -> None:
     """Targets every active device directly via our own device_tokens table,
@@ -165,6 +203,8 @@ async def send_broadcast_notification(title: str, message: str, notification_typ
 
     if not tokens:
         raise AppException("No active device tokens registered to broadcast to", status_code=409)
+    
+    user_ids = sorted({t.user_id for t in tokens})
 
     headers = {
         "Authorization": f"Key {settings.ONESIGNAL_REST_API_KEY}",
@@ -209,9 +249,45 @@ async def send_broadcast_notification(title: str, message: str, notification_typ
             "OneSignal reported recipients=0 for %s registered tokens (delivery may still have succeeded "
             "-- this field is unreliable for direct subscription-id targeting)", len(token_values),
         )
+    await _save_broadcast_history(user_ids, title, message, notification_type)    
 
 
 async def send_broadcast(current_user: User, data: BroadcastNotificationRequest) -> None:
     if current_user.role != Role.ADMIN:
         raise AppException("Only admin can send broadcast notifications", status_code=403)
     await send_broadcast_notification(data.title, data.message, data.notification_type)
+
+
+async def list_notifications(
+    current_user: User, unread_only: bool, page: int, page_size: int
+) -> list[NotificationResponse]:
+    async with UnitOfWork() as uow:
+        items = await uow.notifications.get_for_user(
+            current_user.id, unread_only, page_size, (page - 1) * page_size
+        )
+        return [_notification_to_response(n) for n in items]
+
+
+async def get_unread_count(current_user: User) -> UnreadCountResponse:
+    async with UnitOfWork() as uow:
+        count = await uow.notifications.count_unread(current_user.id)
+        return UnreadCountResponse(unread_count=count)
+
+
+async def mark_notification_read(current_user: User, notification_id: int) -> NotificationResponse:
+    async with UnitOfWork() as uow:
+        notification = await uow.notifications.get_owned(notification_id, current_user.id)
+        if notification is None:
+            raise AppException("Notification not found", status_code=404)
+        if not notification.is_read:
+            notification.is_read = True
+            notification.read_at = datetime.now(timezone.utc)
+            await uow.commit()
+        return _notification_to_response(notification)
+
+
+async def mark_all_read(current_user: User) -> MarkAllReadResponse:
+    async with UnitOfWork() as uow:
+        updated = await uow.notifications.mark_all_read(current_user.id)
+        await uow.commit()
+        return MarkAllReadResponse(updated_count=updated)
