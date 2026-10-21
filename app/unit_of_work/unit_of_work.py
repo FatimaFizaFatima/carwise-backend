@@ -15,7 +15,7 @@ from app.repositories.service_history_repository import ServiceHistoryRepository
 from app.repositories.device_token_repository import DeviceTokenRepository
 from app.repositories.message_repository import MessageRepository
 from app.repositories.conversation_repository import ConversationRepository
-
+from app.repositories.notification_repository import NotificationRepository
 class UnitOfWork():
     def __init__(self):
         self.session : AsyncSession = SessionLocal()
@@ -34,6 +34,7 @@ class UnitOfWork():
         self.device_tokens = DeviceTokenRepository(self.session)
         self.conversations = ConversationRepository(self.session)
         self.messages = MessageRepository(self.session)
+        self.notifications = NotificationRepository(self.session)
 
 
     async def __aenter__(self):

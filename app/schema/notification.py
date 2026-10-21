@@ -39,3 +39,23 @@ class BroadcastNotificationRequest(BaseModel):
         if value not in allowed:
             raise ValueError(f"notification_type must be one of {allowed}")
         return value
+
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+    notification_type: str
+    reference_id: int | None = None
+    data: dict | None = None
+    is_read: bool
+    read_at: datetime | None = None
+    created_at: datetime
+
+
+class UnreadCountResponse(BaseModel):
+    unread_count: int
+
+
+class MarkAllReadResponse(BaseModel):
+    updated_count: int
+    
